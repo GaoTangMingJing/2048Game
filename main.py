@@ -5,6 +5,9 @@ import os
 import random
 import itertools
 
+import numpy as np
+
+
 class Game:
     grid = []
     controls = ['w', 'a', 's', 'd']
@@ -14,7 +17,7 @@ class Game:
         return i>=0 and i <=3 and j>=0 and j <=3
 
     #得到下一个非零位置（只判断up的情况）
-    #[r, c, value]
+    #返回[r, c, value]
     def nextNonZero(self, i, j):
         nextI, nextJ = i+1, j
 
@@ -47,28 +50,44 @@ class Game:
             self.grid[i][j] *= 2
             self.grid[nextI][nextJ] = 0
 
-        nextI += 1
-        self.delOneCol(nextI, nextJ)
+        i += 1
+        self.delOneCol(i, j)
 
+    # 把grid逆时针旋转times次
+    def rotate(self, times):
+        matrix = np.array(self.grid)
+        matrix = np.rot90(matrix, k=times)
+        self.grid = matrix.tolist()
 
+    #操作：上下左右
     def up(self):
         for j in range(4):
             self.delOneCol(0, j)
 
     def down(self):
-        pass
+        self.rotate(2)
+        self.up()
+        self.rotate(-2)
 
     def left(self):
-        pass
+        self.rotate(-1)
+        self.up()
+        self.rotate(1)
 
     def right(self):
-        pass
+        self.rotate(1)
+        self.up()
+        self.rotate(-1)
 
+    #在格子里生成随机数
     def random_number(self):
         number = random.choice([2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4])
-        x, y = random.choice([(x, y) for x, y in itertools.product([0, 1, 2, 3], [0, 1, 2, 3]) if self.grid[x][y] == 0])
-        self.grid[x][y] = number
+        chooseList = [(x, y) for x, y in itertools.product([0, 1, 2, 3], [0, 1, 2, 3]) if self.grid[x][y] == 0]
+        if (chooseList):
+            x, y = random.choice(chooseList)
+            self.grid[x][y] = number
 
+    #打印棋盘
     def print_grid(self):
         os.system('cls')
         print('-' * 21)
@@ -76,23 +95,8 @@ class Game:
             print('|{}|'.format('|'.join([str(col or ' ').center(4) for col in row])))
             print('-' * 21)
 
-    # def logic(self, control):
-    #     dict = {'w': self.up, 's': self.down, 'a': self.left, 'd': self.right}
-    #     grid_deepcopy = [[col for col in row] for row in self.grid]
-    #     new_grid = dict[control](grid_deepcopy)
-    #     # grid = {'w': up, 's': down, 'a': left, 'd': right}[control]([[col for col in row] for row in self.grid])
-    #     if new_grid != self.grid:
-    #         del self.grid[:]
-    #         self.grid.extend(new_grid)
-    #         if [n for n in itertools.chain(*self.grid) if n >= 2048]:
-    #             return 1, "You Win!"
-    #         self.random_number()
-    #         self.random_number()
-    #     else:
-    #         if not [1 for g in [f(new_grid) for f in dict.values()] if g != self.grid]:
-    #             return -1, "You Lose"
-    #     return 0, "" # 1, "You Win!"; -1, "You Lose!"
 
+    #游戏逻辑判断
     def logic(self, control):
         dict = {'w': self.up, 's': self.down, 'a': self.left, 'd': self.right}
         grid_deepcopy = [[col for col in row] for row in self.grid]
@@ -102,12 +106,24 @@ class Game:
             if [n for n in itertools.chain(*self.grid) if n >= 2048]:
                 return 1, "You Win!"
             self.random_number()
-            self.random_number()
         else:
-            if not [1 for g in [f() for f in dict.values()] if g != self.grid]:
+            lose = True
+            for f in dict.values():
+                f()
+                if self.grid != grid_deepcopy:
+                    lose = False
+                    break
+                self.grid = grid_deepcopy
+
+            if lose:
                 return -1, "You Lose"
+            else:
+                print("没有数字被合成或移动，操作失败")    #在命令行运行时，会因为清屏而无法显示
+                self.grid = grid_deepcopy
+
         return 0, "" # 1, "You Win!"; -1, "You Lose!"
 
+    #游戏主循环
     def main_loop(self):
         # 棋盘初始化
         self.grid = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
